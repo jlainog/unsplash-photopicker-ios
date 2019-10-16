@@ -22,7 +22,6 @@ class UnsplashPhotoPickerPreviewViewController: UIViewController {
 
     init(image: UIImage) {
         self.image = image
-
         super.init(nibName: nil, bundle: nil)
     }
 
@@ -32,7 +31,6 @@ class UnsplashPhotoPickerPreviewViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
         setupPhotoImageView()
     }
 

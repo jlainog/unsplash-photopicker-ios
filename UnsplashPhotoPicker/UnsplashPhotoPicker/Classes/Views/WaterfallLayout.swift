@@ -55,7 +55,6 @@ class WaterfallLayout: UICollectionViewLayout {
 
     init(with delegate: WaterfallLayoutDelegate?) {
         self.delegate = delegate
-
         super.init()
     }
 

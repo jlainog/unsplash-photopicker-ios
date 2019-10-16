@@ -9,14 +9,15 @@
 import Foundation
 import MobileCoreServices
 import UIKit
+import unsplash_swift
 
 let kUTTypeUnsplashPhoto = "com.unsplash.photo"
 
 final class UnsplashPhotoItemProvider: NSObject, Codable {
 
-    let photo: UnsplashPhoto
+    let photo: Photo
 
-    init(with photo: UnsplashPhoto) {
+    init(with photo: Photo) {
         self.photo = photo
         super.init()
     }
@@ -56,14 +57,13 @@ extension UnsplashPhotoItemProvider: NSItemProviderWriting {
 
         case kUTTypeJPEG:
             guard let url = photo.urls[.full] else {
-                completionHandler(nil, ItemProviderError.cannotDecodeLink(key: UnsplashPhoto.LinkKind.download.rawValue, photoIdentifier: photo.identifier))
+                completionHandler(nil, ItemProviderError.cannotDecodeLink(key: Photo.LinkKind.download.rawValue, photoIdentifier: photo.identifier))
                 return nil
             }
 
             let dataTask = URLSession.shared.dataTask(with: url, completionHandler: { (data, _, error) in
-                if error == nil, let downloadLocationURL = self.photo.links[.downloadLocation]?.appending(queryItems: [URLQueryItem(name: "client_id", value: Configuration.shared.accessKey)]) {
-                    let pingDownloadTask = URLSession.shared.dataTask(with: downloadLocationURL)
-                    pingDownloadTask.resume()
+                if error == nil {
+                    Unsplash.trackDownload(self.photo)
                 }
 
                 completionHandler(data, error)

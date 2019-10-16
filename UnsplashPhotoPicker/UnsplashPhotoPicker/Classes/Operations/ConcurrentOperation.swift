@@ -8,14 +8,27 @@
 import Foundation
 
 class ConcurrentOperation: Operation {
+    private var overrideExecuting: Bool = false
+    private var overrideFinished: Bool = false
 
     var error: Error?
 
-    override init() {
-        overrideExecuting = false
-        overrideFinished = false
+    override var isExecuting: Bool {
+        get { return overrideExecuting }
+        set {
+            willChangeValue(forKey: "isExecuting")
+            overrideExecuting = newValue
+            didChangeValue(forKey: "isExecuting")
+        }
+    }
 
-        super.init()
+    override var isFinished: Bool {
+        get { return overrideFinished }
+        set {
+            willChangeValue(forKey: "isFinished")
+            overrideFinished = newValue
+            didChangeValue(forKey: "isFinished")
+        }
     }
 
     override func start() {
@@ -30,12 +43,7 @@ class ConcurrentOperation: Operation {
         main()
     }
 
-    func completeOperation() {
-        isExecuting = false
-        isFinished = true
-    }
-
-    final func completeWithError(_ error: Error) {
+    final func complete(with error: Error) {
         self.error = error
         cancelAndCompleteOperation()
     }
@@ -45,24 +53,9 @@ class ConcurrentOperation: Operation {
         completeOperation()
     }
 
-    private var overrideExecuting: Bool
-    override var isExecuting: Bool {
-        get { return overrideExecuting }
-        set {
-            willChangeValue(forKey: "isExecuting")
-            overrideExecuting = newValue
-            didChangeValue(forKey: "isExecuting")
-        }
-    }
-
-    private var overrideFinished: Bool
-    override var isFinished: Bool {
-        get { return overrideFinished }
-        set {
-            willChangeValue(forKey: "isFinished")
-            overrideFinished = newValue
-            didChangeValue(forKey: "isFinished")
-        }
+    func completeOperation() {
+        isExecuting = false
+        isFinished = true
     }
 
 }

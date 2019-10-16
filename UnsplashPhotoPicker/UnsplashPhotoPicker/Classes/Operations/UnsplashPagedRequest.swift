@@ -7,45 +7,25 @@
 //
 
 import Foundation
+import unsplash_swift
 
-class UnsplashPagedRequest: UnsplashRequest {
+class UnsplashPagedRequestOperation: UnsplashRequestOperation<[Photo], Unsplash.RequestError> {
 
-    struct Cursor {
-        let page: Int
-        let perPage: Int
-        let parameters: [String: Any]?
-    }
+    let cursor: Unsplash.Cursor
+    var items: [Photo] { value ?? [] }
 
-    let cursor: Cursor
-
-    var items = [Any]()
-
-    init(with cursor: Cursor) {
+    init(with cursor: Unsplash.Cursor) {
         self.cursor = cursor
         super.init()
     }
 
-    convenience init(with page: Int = 1, perPage: Int = 10) {
-        self.init(with: Cursor(page: page, perPage: perPage, parameters: nil))
+    init(with page: Int = 1, perPage: Int = 10) {
+        self.cursor = .init(page: page, perPage: perPage)
+        super.init()
     }
 
-    func nextCursor() -> Cursor {
-        return Cursor(page: cursor.page + 1, perPage: cursor.perPage, parameters: cursor.parameters)
+    func nextCursor() -> Unsplash.Cursor {
+        return cursor.next()
     }
 
-    // MARK: - Prepare the request
-
-    override func prepareParameters() -> [String: Any]? {
-        var parameters = super.prepareParameters() ?? [String: Any]()
-        parameters["page"] = cursor.page
-        parameters["per_page"] = cursor.perPage
-
-        if let cursorParameters = cursor.parameters {
-            for (key, value) in cursorParameters {
-                parameters[key] = value
-            }
-        }
-
-        return parameters
-    }
 }

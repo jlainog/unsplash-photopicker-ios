@@ -7,16 +7,16 @@
 //
 
 import UIKit
+import unsplash_swift
 
 protocol UnsplashPhotoPickerViewControllerDelegate: class {
-    func unsplashPhotoPickerViewController(_ viewController: UnsplashPhotoPickerViewController, didSelectPhotos photos: [UnsplashPhoto])
+    func unsplashPhotoPickerViewController(_ viewController: UnsplashPhotoPickerViewController, didSelectPhotos photos: [Photo])
     func unsplashPhotoPickerViewControllerDidCancel(_ viewController: UnsplashPhotoPickerViewController)
 }
 
 class UnsplashPhotoPickerViewController: UIViewController {
 
     // MARK: - Properties
-
     private lazy var cancelBarButtonItem: UIBarButtonItem = {
         return UIBarButtonItem(
             barButtonSystemItem: .cancel,
@@ -52,11 +52,12 @@ class UnsplashPhotoPickerViewController: UIViewController {
         collectionView.dataSource = self
         collectionView.delegate = self
         collectionView.register(PhotoCell.self, forCellWithReuseIdentifier: PhotoCell.reuseIdentifier)
-        collectionView.register(PagingView.self, forSupplementaryViewOfKind: UICollectionView.elementKindSectionFooter, withReuseIdentifier: PagingView.reuseIdentifier)
+        collectionView.register(PagingView.self, forSupplementaryViewOfKind: UICollectionView.elementKindSectionFooter, withReuseIdentifier:
+            PagingView.reuseIdentifier)
         collectionView.contentInsetAdjustmentBehavior = .automatic
         collectionView.layoutMargins = UIEdgeInsets(top: 0.0, left: 16.0, bottom: 0.0, right: 16.0)
-        collectionView.backgroundColor = UIColor.photoPicker.background
-        collectionView.allowsMultipleSelection = Configuration.shared.allowsMultipleSelection
+        collectionView.backgroundColor = .white
+        collectionView.allowsMultipleSelection = allowsMultipleSelection
         return collectionView
     }()
 
@@ -84,20 +85,19 @@ class UnsplashPhotoPickerViewController: UIViewController {
         return collectionView.indexPathsForSelectedItems?.count ?? 0
     }
 
-    private let editorialDataSource = PhotosDataSourceFactory.collection(identifier: Configuration.shared.editorialCollectionId).dataSource
+    private let editorialDataSource = PhotosDataSourceFactory.collection(identifier: Unsplash.editorialCollectionId).dataSource
 
     private var previewingContext: UIViewControllerPreviewing?
     private var searchText: String?
 
     weak var delegate: UnsplashPhotoPickerViewControllerDelegate?
+    let allowsMultipleSelection: Bool
 
     // MARK: - Lifetime
-
-    init() {
+    init(allowsMultipleSelection: Bool) {
+        self.allowsMultipleSelection = allowsMultipleSelection
         self.dataSource = editorialDataSource
-
         super.init(nibName: nil, bundle: nil)
-
         dataSource.delegate = self
     }
 
@@ -106,20 +106,15 @@ class UnsplashPhotoPickerViewController: UIViewController {
     }
 
     // MARK: - View Life Cycle
-
     override func viewDidLoad() {
         super.viewDidLoad()
-
-        view.backgroundColor = UIColor.photoPicker.background
+        view.backgroundColor = .white
         setupNotifications()
         setupNavigationBar()
         setupSearchController()
         setupCollectionView()
         setupSpinner()
         setupPeekAndPop()
-
-        let trimmedQuery = Configuration.shared.query?.trimmingCharacters(in: .whitespacesAndNewlines)
-        setSearchText(trimmedQuery)
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -127,6 +122,8 @@ class UnsplashPhotoPickerViewController: UIViewController {
 
         if dataSource.items.count == 0 {
             refresh()
+        } else {
+            reloadData()
         }
     }
 
@@ -139,14 +136,12 @@ class UnsplashPhotoPickerViewController: UIViewController {
 
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransition(to: size, with: coordinator)
-
         coordinator.animate(alongsideTransition: { (_) in
             self.layout.invalidateLayout()
         })
     }
 
     // MARK: - Setup
-
     private func setupNotifications() {
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillShowNotification(_:)), name: UIResponder.keyboardWillShowNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillHideNotification(_:)), name: UIResponder.keyboardWillHideNotification, object: nil)
@@ -156,16 +151,13 @@ class UnsplashPhotoPickerViewController: UIViewController {
         updateTitle()
         navigationItem.leftBarButtonItem = cancelBarButtonItem
 
-        if Configuration.shared.allowsMultipleSelection {
+        if allowsMultipleSelection {
             doneBarButtonItem.isEnabled = false
             navigationItem.rightBarButtonItem = doneBarButtonItem
         }
     }
 
     private func setupSearchController() {
-        let trimmedQuery = Configuration.shared.query?.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let query = trimmedQuery, query.isEmpty == false { return }
-
         navigationItem.searchController = searchController
         navigationItem.hidesSearchBarWhenScrolling = false
         definesPresentationContext = true
@@ -174,7 +166,6 @@ class UnsplashPhotoPickerViewController: UIViewController {
 
     private func setupCollectionView() {
         view.addSubview(collectionView)
-
         NSLayoutConstraint.activate([
             collectionView.topAnchor.constraint(equalTo: view.topAnchor),
             collectionView.leftAnchor.constraint(equalTo: view.leftAnchor),
@@ -185,7 +176,6 @@ class UnsplashPhotoPickerViewController: UIViewController {
 
     private func setupSpinner() {
         view.addSubview(spinner)
-
         NSLayoutConstraint.activate([
             spinner.centerXAnchor.constraint(equalTo: collectionView.centerXAnchor),
             spinner.centerYAnchor.constraint(equalTo: collectionView.centerYAnchor)
@@ -202,9 +192,7 @@ class UnsplashPhotoPickerViewController: UIViewController {
         guard emptyView.superview == nil else { return }
 
         spinner.stopAnimating()
-
         view.addSubview(emptyView)
-
         NSLayoutConstraint.activate([
             emptyView.topAnchor.constraint(equalTo: view.topAnchor),
             emptyView.leftAnchor.constraint(equalTo: view.leftAnchor),
@@ -226,17 +214,15 @@ class UnsplashPhotoPickerViewController: UIViewController {
     }
 
     // MARK: - Actions
-
     @objc private func cancelBarButtonTapped(sender: AnyObject?) {
         searchController.searchBar.resignFirstResponder()
-
         delegate?.unsplashPhotoPickerViewControllerDidCancel(self)
     }
 
     @objc private func doneBarButtonTapped(sender: AnyObject?) {
         searchController.searchBar.resignFirstResponder()
 
-        let selectedPhotos = collectionView.indexPathsForSelectedItems?.reduce([], { (photos, indexPath) -> [UnsplashPhoto] in
+        let selectedPhotos = collectionView.indexPathsForSelectedItems?.reduce([], { (photos, indexPath) -> [Photo] in
             var mutablePhotos = photos
             if let photo = dataSource.item(at: indexPath.item) {
                 mutablePhotos.append(photo)
@@ -244,7 +230,7 @@ class UnsplashPhotoPickerViewController: UIViewController {
             return mutablePhotos
         })
 
-        delegate?.unsplashPhotoPickerViewController(self, didSelectPhotos: selectedPhotos ?? [UnsplashPhoto]())
+        delegate?.unsplashPhotoPickerViewController(self, didSelectPhotos: selectedPhotos ?? [Photo]())
     }
 
     private func scrollToTop() {
@@ -253,17 +239,6 @@ class UnsplashPhotoPickerViewController: UIViewController {
     }
 
     // MARK: - Data
-
-    private func setSearchText(_ text: String?) {
-        if let text = text, text.isEmpty == false {
-            dataSource = PhotosDataSourceFactory.search(query: text).dataSource
-            searchText = text
-        } else {
-            dataSource = editorialDataSource
-            searchText = nil
-        }
-    }
-
     @objc func refresh() {
         guard dataSource.items.isEmpty else { return }
 
@@ -289,7 +264,6 @@ class UnsplashPhotoPickerViewController: UIViewController {
     }
 
     // MARK: - Notifications
-
     @objc func keyboardWillShowNotification(_ notification: Notification) {
         guard let keyboardSize = (notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect)?.size,
             let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? TimeInterval else {
@@ -338,7 +312,8 @@ extension UnsplashPhotoPickerViewController: UISearchBarDelegate {
     func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
         guard let text = searchBar.text else { return }
 
-        setSearchText(text)
+        dataSource = PhotosDataSourceFactory.search(query: text).dataSource
+        searchText = text
         refresh()
         scrollToTop()
         hideEmptyView()
@@ -349,7 +324,8 @@ extension UnsplashPhotoPickerViewController: UISearchBarDelegate {
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         guard self.searchText != nil && searchText.isEmpty else { return }
 
-        setSearchText(nil)
+        dataSource = editorialDataSource
+        self.searchText = nil
         refresh()
         reloadData()
         scrollToTop()
@@ -376,13 +352,12 @@ extension UnsplashPhotoPickerViewController: PagedDataSourceDelegate {
         }
     }
 
-    func dataSource(_ dataSource: PagedDataSource, didFetch items: [UnsplashPhoto]) {
+    func dataSource(_ dataSource: PagedDataSource, didFetch items: [Photo]) {
         guard dataSource.items.count > 0 else {
             DispatchQueue.main.async {
                 self.spinner.stopAnimating()
                 self.showEmptyView(with: .noResults)
             }
-
             return
         }
 
@@ -390,6 +365,7 @@ extension UnsplashPhotoPickerViewController: PagedDataSourceDelegate {
         let startIndex = self.dataSource.items.count - newPhotosCount
         let endIndex = startIndex + newPhotosCount
         var newIndexPaths = [IndexPath]()
+
         for index in startIndex..<endIndex {
             newIndexPaths.append(IndexPath(item: index, section: 0))
         }
@@ -410,7 +386,6 @@ extension UnsplashPhotoPickerViewController: PagedDataSourceDelegate {
 
     func dataSource(_ dataSource: PagedDataSource, fetchDidFailWithError error: Error) {
         let state: EmptyViewState = (error as NSError).isNoInternetConnectionError() ? .noInternetConnection : .serverError
-
         DispatchQueue.main.async {
             self.showEmptyView(with: state)
         }
@@ -428,10 +403,8 @@ extension UnsplashPhotoPickerViewController: UIViewControllerPreviewingDelegate 
         }
 
         previewingContext.sourceRect = cellAttributes.frame
-
         return UnsplashPhotoPickerPreviewViewController(image: image)
     }
 
-    func previewingContext(_ previewingContext: UIViewControllerPreviewing, commit viewControllerToCommit: UIViewController) {
-    }
+    func previewingContext(_ previewingContext: UIViewControllerPreviewing, commit viewControllerToCommit: UIViewController) {}
 }

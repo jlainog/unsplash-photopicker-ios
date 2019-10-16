@@ -1,0 +1,25 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "Codable-Utils",
+        "repositoryURL": "https://github.com/jlainog/Codable-Utils.git",
+        "state": {
+          "branch": null,
+          "revision": "9f2a0a656cba9f15c06c652ff6eda66260223faa",
+          "version": "0.0.2"
+        }
+      },
+      {
+        "package": "unsplash-swift",
+        "repositoryURL": "https://github.com/jlainog/unsplash-swift.git",
+        "state": {
+          "branch": null,
+          "revision": "b4d245d138da4a09e173fd25c43d51b41a84e00f",
+          "version": "0.0.1"
+        }
+      }
+    ]
+  },
+  "version": 1
+}

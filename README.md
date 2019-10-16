@@ -1,3 +1,6 @@
+# Disclousure
+This is a fork of the UnsplashPhotoPicker using [unplash-swift](https://github.com/jlainog/unsplash-swift)
+
 # Unsplash Photo Picker for iOS
 
 [![CocoaPods Compatible](https://img.shields.io/cocoapods/v/UnsplashPhotoPicker.svg?style=flat-square)](https://cocoapods.org/pods/UnsplashPhotoPicker)

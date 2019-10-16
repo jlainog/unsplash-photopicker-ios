@@ -7,12 +7,26 @@
 //
 
 import UIKit
+import unsplash_swift
 
 class PhotoView: UIView {
 
-    static var nib: UINib { return UINib(nibName: "PhotoView", bundle: Bundle(for: PhotoView.self)) }
+    static func build() -> PhotoView {
+        let nib = UINib(nibName: "PhotoView", bundle: Bundle(for: PhotoView.self))
+        guard let photoView = nib.instantiate(withOwner: nil, options: nil).first as? PhotoView else {
+            assertionFailure("Xib must Exist")
+            return .init()
+        }
+        return photoView
+    }
 
-    private var imageDownloader = ImageDownloader()
+    static func build(with photo: Photo) -> PhotoView {
+        let photoView: PhotoView = .build()
+        photoView.configure(with: photo)
+        return photoView
+    }
+
+    private var imageDownloader: ImageDownloader = .init()
     private var screenScale: CGFloat { return UIScreen.main.scale }
 
     @IBOutlet weak var imageView: UIImageView!
@@ -29,11 +43,10 @@ class PhotoView: UIView {
 
     override func awakeFromNib() {
         super.awakeFromNib()
-
         accessibilityIgnoresInvertColors = true
         gradientView.setColors([
-            GradientView.Color(color: .clear, location: 0),
-            GradientView.Color(color: UIColor(white: 0, alpha: 0.5), location: 1)
+            .init(color: .clear, location: 0),
+            .init(color: UIColor(white: 0, alpha: 0.5), location: 1)
         ])
     }
 
@@ -52,51 +65,36 @@ class PhotoView: UIView {
 
     // MARK: - Setup
 
-    func configure(with photo: UnsplashPhoto, showsUsername: Bool = true) {
+    func configure(with photo: Photo, showsUsername: Bool = true) {
         self.showsUsername = showsUsername
         userNameLabel.text = photo.user.displayName
         imageView.backgroundColor = photo.color
         downloadImage(with: photo)
     }
 
-    private func downloadImage(with photo: UnsplashPhoto) {
-        guard let regularUrl = photo.urls[.regular] else { return }
-
-        let url = sizedImageURL(from: regularUrl)
-
-        imageDownloader.downloadPhoto(with: url, completion: { [weak self] (image, isCached) in
-            guard let strongSelf = self, strongSelf.imageDownloader.isCancelled == false else { return }
+    private func downloadImage(with photo: Photo) {
+        imageDownloader.load(
+            photo,
+            size: frame.size,
+            kind: .regular
+        ) { [weak self] (image, isCached) in
+            guard let self = self,
+                let image = image,
+                self.imageDownloader.isCancelled == false
+                else {
+                    return
+            }
 
             if isCached {
-                strongSelf.imageView.image = image
+                self.imageView.image = image
             } else {
-                UIView.transition(with: strongSelf, duration: 0.25, options: [.transitionCrossDissolve], animations: {
-                    strongSelf.imageView.image = image
-                }, completion: nil)
+                UIView.transition(with: self,
+                                  duration: 0.25,
+                                  options: [.transitionCrossDissolve],
+                                  animations: { self.imageView.image = image},
+                                  completion: nil)
             }
-        })
-    }
-
-    private func sizedImageURL(from url: URL) -> URL {
-        let width: CGFloat = frame.width * screenScale
-        let height: CGFloat = frame.height * screenScale
-
-        return url.appending(queryItems: [
-            URLQueryItem(name: "max-w", value: "\(width)"),
-            URLQueryItem(name: "max-h", value: "\(height)")
-        ])
-    }
-
-    // MARK: - Utility
-
-    class func view(with photo: UnsplashPhoto) -> PhotoView? {
-        guard let photoView = nib.instantiate(withOwner: nil, options: nil).first as? PhotoView else {
-            return nil
         }
-
-        photoView.configure(with: photo)
-
-        return photoView
     }
 
 }

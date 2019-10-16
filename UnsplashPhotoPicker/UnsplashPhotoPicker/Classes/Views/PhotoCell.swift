@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import unsplash_swift
 
 class PhotoCell: UICollectionViewCell {
 
@@ -15,8 +16,7 @@ class PhotoCell: UICollectionViewCell {
     static let reuseIdentifier = "PhotoCell"
 
     let photoView: PhotoView = {
-        // swiftlint:disable force_cast
-        let photoView = (PhotoView.nib.instantiate(withOwner: nil, options: nil).first as! PhotoView)
+        let photoView = PhotoView.build()
         photoView.translatesAutoresizingMaskIntoConstraints = false
         return photoView
     }()
@@ -66,7 +66,7 @@ class PhotoCell: UICollectionViewCell {
 
     // MARK: - Setup
 
-    func configure(with photo: UnsplashPhoto) {
+    func configure(with photo: Photo) {
         photoView.configure(with: photo)
     }
 

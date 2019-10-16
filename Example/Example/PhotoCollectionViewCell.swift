@@ -7,39 +7,28 @@
 //
 
 import UIKit
+import unsplash_swift
 import UnsplashPhotoPicker
 
 class PhotoCollectionViewCell: UICollectionViewCell {
 
     @IBOutlet weak var photoImageView: UIImageView!
 
-    private var imageDataTask: URLSessionDataTask?
-    private static var cache = URLCache(memoryCapacity: 50 * 1024 * 1024, diskCapacity: 100 * 1024 * 1024, diskPath: "unsplash")
+    private var imageDownloader: ImageDownloader = .init()
 
-    func downloadPhoto(_ photo: UnsplashPhoto) {
-        guard let url = photo.urls[.regular] else { return }
-
-        if let cachedResponse = PhotoCollectionViewCell.cache.cachedResponse(for: URLRequest(url: url)),
-            let image = UIImage(data: cachedResponse.data) {
-            photoImageView.image = image
-            return
-        }
-
-        imageDataTask = URLSession.shared.dataTask(with: url) { [weak self] (data, _, error) in
-            guard let strongSelf = self else { return }
-
-            strongSelf.imageDataTask = nil
-
-            guard let data = data, let image = UIImage(data: data), error == nil else { return }
-
-            DispatchQueue.main.async {
-                UIView.transition(with: strongSelf.photoImageView, duration: 0.25, options: [.transitionCrossDissolve], animations: {
-                    strongSelf.photoImageView.image = image
-                }, completion: nil)
+    func downloadPhoto(_ photo: Photo) {
+        imageDownloader.load(photo) { [weak self] image, isCached in
+            guard let self = self,
+                let image = image else {
+                    return
             }
+            
+            UIView.transition(with: self.photoImageView,
+                              duration: 0.25,
+                              options: [.transitionCrossDissolve],
+                              animations: { self.photoImageView.image = image},
+                              completion: nil)
         }
-
-        imageDataTask?.resume()
     }
 
 }

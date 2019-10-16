@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import unsplash_swift
 import UnsplashPhotoPicker
 
 enum SelectionType: Int {
@@ -17,51 +18,30 @@ enum SelectionType: Int {
 class ViewController: UIViewController {
 
     // MARK: - Properties
-
     @IBOutlet weak var selectionTypeSegmentedControl: UISegmentedControl!
     @IBOutlet weak var collectionView: UICollectionView!
     @IBOutlet weak var bottomSheet: UIView!
-    @IBOutlet weak var searchQueryTextField: UITextField!
 
     private let itemsPerRow: CGFloat = 3
     private let sectionInsets = UIEdgeInsets(top: 20.0, left: 20.0, bottom: 20.0, right: 20.0)
 
-    private var photos = [UnsplashPhoto]()
-
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        NotificationCenter.default.addObserver(self, selector: #selector(keyboardWillChangeFrame), name: UIApplication.keyboardWillChangeFrameNotification, object: nil)
-    }
+    private var photos = [Photo]()
 
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
         collectionView.contentInset.bottom = bottomSheet.frame.height
     }
 
-    @objc func keyboardWillChangeFrame(_ notification: Notification) {
-        guard let endFrame = notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect else { return }
-
-        let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.3
-        let curveRawValue = notification.userInfo?[UIResponder.keyboardAnimationCurveUserInfoKey] as? Int ?? 0
-        let curve: UIView.AnimationCurve = UIView.AnimationCurve(rawValue: curveRawValue) ?? .easeInOut
-
-        UIViewPropertyAnimator(duration: duration, curve: curve, animations: {
-            self.additionalSafeAreaInsets.bottom = self.view.frame.height - endFrame.origin.y
-            self.view.layoutIfNeeded()
-        }).startAnimation()
-    }
-
     // MARK: - Action
 
     @IBAction func presentUnsplashPhotoPicker(sender: AnyObject?) {
         let allowsMultipleSelection = selectionTypeSegmentedControl.selectedSegmentIndex == SelectionType.multiple.rawValue
-        let configuration = UnsplashPhotoPickerConfiguration(
-            accessKey: "<YOUR_ACCESS_KEY>",
-            secretKey: "<YOUR_SECRET_KEY>",
-            query: searchQueryTextField.text,
+
+        let unsplashPhotoPicker = UnsplashPhotoPicker(
+            accessKey: "a6b5729a2ebb41bef7f72e1afdfb3601210648e8cd4c8c02c61536ab7be2d35f",
+            secretKey: "7284c485b9bed1448134f1ecb3bd39c9cce41fe5031298fd2dc7d8cffe364bd5",
             allowsMultipleSelection: allowsMultipleSelection
         )
-        let unsplashPhotoPicker = UnsplashPhotoPicker(configuration: configuration)
         unsplashPhotoPicker.photoPickerDelegate = self
 
         present(unsplashPhotoPicker, animated: true, completion: nil)
@@ -108,7 +88,7 @@ extension ViewController: UICollectionViewDelegateFlowLayout {
 
 // MARK: - UnsplashPhotoPickerDelegate
 extension ViewController: UnsplashPhotoPickerDelegate {
-    func unsplashPhotoPicker(_ photoPicker: UnsplashPhotoPicker, didSelectPhotos photos: [UnsplashPhoto]) {
+    func unsplashPhotoPicker(_ photoPicker: UnsplashPhotoPicker, didSelectPhotos photos: [Photo]) {
         print("Unsplash photo picker did select \(photos.count) photo(s)")
 
         self.photos = photos
@@ -118,13 +98,5 @@ extension ViewController: UnsplashPhotoPickerDelegate {
 
     func unsplashPhotoPickerDidCancel(_ photoPicker: UnsplashPhotoPicker) {
         print("Unsplash photo picker did cancel")
-    }
-}
-
-// MARK: - UITextFieldDelegate
-extension ViewController: UITextFieldDelegate {
-    func textFieldShouldReturn(_ textField: UITextField) -> Bool {
-        textField.resignFirstResponder()
-        return true
     }
 }

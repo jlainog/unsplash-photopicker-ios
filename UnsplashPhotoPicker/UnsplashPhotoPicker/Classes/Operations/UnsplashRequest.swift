@@ -8,66 +8,22 @@
 
 import Foundation
 
-class UnsplashRequest: NetworkRequest {
+class UnsplashRequestOperation<T, E: Error>: NetworkRequestOperation {
+    var value: T?
 
-    enum RequestError: Error {
-        case invalidJSONResponse
-
-        var localizedDescription: String {
-            switch self {
-            case .invalidJSONResponse:
-                return "Invalid JSON response."
-            }
+    var completionHandler: (Result<T, E>) -> Void {
+        return { [weak self] result in
+            self?.complete(with: result)
         }
     }
 
-    private(set) var jsonResponse: Any?
-
-    // MARK: - Prepare the request
-
-    override func prepareURLComponents() -> URLComponents? {
-        guard let apiURL = URL(string: Configuration.shared.apiURL) else {
-            return nil
-        }
-
-        var urlComponents = URLComponents(url: apiURL, resolvingAgainstBaseURL: true)
-        urlComponents?.path = endpoint
-        return urlComponents
-    }
-
-    override func prepareParameters() -> [String: Any]? {
-        return nil
-    }
-
-    override func prepareHeaders() -> [String: String]? {
-        var headers = [String: String]()
-        headers["Authorization"] = "Client-ID \(Configuration.shared.accessKey)"
-        return headers
-    }
-
-    // MARK: - Process the response
-
-    override func processResponseData(_ data: Data?) {
-        if let error = error {
-            completeWithError(error)
-            return
-        }
-
-        guard let data = data else { return }
-
-        do {
-            jsonResponse = try JSONSerialization.jsonObject(with: data, options: JSONSerialization.ReadingOptions.init(rawValue: 0))
-            processJSONResponse()
-        } catch {
-            completeWithError(RequestError.invalidJSONResponse)
-        }
-    }
-
-    func processJSONResponse() {
-        if let error = error {
-            completeWithError(error)
-        } else {
+    final func complete(with result: Result<T, E>) {
+        switch result {
+        case .success(let value):
+            self.value = value
             completeOperation()
+        case .failure(let error):
+            complete(with: error)
         }
     }
 }

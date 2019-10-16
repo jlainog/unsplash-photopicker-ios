@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import unsplash_swift
 
 enum PhotosDataSourceFactory: PagedDataSourceFactory {
     case search(query: String)
@@ -16,22 +17,16 @@ enum PhotosDataSourceFactory: PagedDataSourceFactory {
         return PagedDataSource(with: self)
     }
 
-    func initialCursor() -> UnsplashPagedRequest.Cursor {
-        switch self {
-        case .search(let query):
-            return SearchPhotosRequest.cursor(with: query, page: 1, perPage: 30)
-        case .collection(let identifier):
-            let perPage = 30
-            return GetCollectionPhotosRequest.cursor(with: identifier, page: 1, perPage: perPage)
-        }
+    func initialCursor() -> Unsplash.Cursor {
+        .init(page: 1, perPage: 30)
     }
 
-    func request(with cursor: UnsplashPagedRequest.Cursor) -> UnsplashPagedRequest {
+    func request(with cursor: Unsplash.Cursor) -> UnsplashPagedRequestOperation {
         switch self {
         case .search(let query):
-            return SearchPhotosRequest(with: query, page: cursor.page, perPage: cursor.perPage)
+            return SearchPhotosRequestOperation(with: query, cursor: cursor)
         case .collection(let identifier):
-            return GetCollectionPhotosRequest(for: identifier, page: cursor.page, perPage: cursor.perPage)
+            return GetCollectionPhotosRequestOperation(with: identifier, cursor: cursor)
         }
     }
 }

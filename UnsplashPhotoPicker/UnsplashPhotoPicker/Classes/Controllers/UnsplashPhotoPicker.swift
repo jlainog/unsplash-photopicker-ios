@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import unsplash_swift
 
 /// A protocol describing an object that can be notified of events from UnsplashPhotoPicker.
 public protocol UnsplashPhotoPickerDelegate: class {
@@ -17,7 +18,7 @@ public protocol UnsplashPhotoPickerDelegate: class {
      - parameter photoPicker: The `UnsplashPhotoPicker` instance responsible for selecting the photos.
      - parameter photos:      The selected photos.
      */
-    func unsplashPhotoPicker(_ photoPicker: UnsplashPhotoPicker, didSelectPhotos photos: [UnsplashPhoto])
+    func unsplashPhotoPicker(_ photoPicker: UnsplashPhotoPicker, didSelectPhotos photos: [Photo])
 
     /**
      Notifies the delegate that UnsplashPhotoPicker has been canceled.
@@ -28,26 +29,21 @@ public protocol UnsplashPhotoPickerDelegate: class {
 }
 
 /// `UnsplashPhotoPicker` is an object that can be used to select photos from Unsplash.
-public class UnsplashPhotoPicker: UINavigationController {
-
-    // MARK: - Properties
-
+public final class UnsplashPhotoPicker: UINavigationController {
     private let photoPickerViewController: UnsplashPhotoPickerViewController
 
     /// A delegate that is notified of significant events.
     public weak var photoPickerDelegate: UnsplashPhotoPickerDelegate?
 
-    // MARK: - Lifetime
+    /// Initializes an `UnsplashPhotoPicker` object with a configuration.
+    /// - Parameters:
+    ///   - accessKey: Your application’s access key.
+    ///   - secretKey: Your application’s secret key.
+    ///   - allowsMultipleSelection: Controls whether the picker allows multiple or single selection.
+    public init(accessKey: String, secretKey: String, allowsMultipleSelection: Bool) {
+        Unsplash.configure(accessKey: accessKey, secret: secretKey)
 
-    /**
-     Initializes an `UnsplashPhotoPicker` object with a configuration.
-
-     - parameter configuration: The configuration struct that specifies how UnsplashPhotoPicker should be configured.
-     */
-    public init(configuration: UnsplashPhotoPickerConfiguration) {
-        Configuration.shared = configuration
-
-        self.photoPickerViewController = UnsplashPhotoPickerViewController()
+        self.photoPickerViewController = UnsplashPhotoPickerViewController(allowsMultipleSelection: allowsMultipleSelection)
 
         super.init(nibName: nil, bundle: nil)
 
@@ -58,30 +54,19 @@ public class UnsplashPhotoPicker: UINavigationController {
         fatalError("init(coder:) has not been implemented")
     }
 
-    // MARK: - View Life Cycle
-
     public override func viewDidLoad() {
         super.viewDidLoad()
-
+        navigationBar.isTranslucent = false
         viewControllers = [photoPickerViewController]
-    }
-
-    // MARK: - Download tracking
-
-    private func trackDownloads(for photos: [UnsplashPhoto]) {
-        for photo in photos {
-            if let downloadLocationURL = photo.links[.downloadLocation]?.appending(queryItems: [URLQueryItem(name: "client_id", value: Configuration.shared.accessKey)]) {
-                URLSession.shared.dataTask(with: downloadLocationURL).resume()
-            }
-        }
     }
 
 }
 
 // MARK: - UnsplashPhotoPickerViewControllerDelegate
 extension UnsplashPhotoPicker: UnsplashPhotoPickerViewControllerDelegate {
-    func unsplashPhotoPickerViewController(_ viewController: UnsplashPhotoPickerViewController, didSelectPhotos photos: [UnsplashPhoto]) {
-        trackDownloads(for: photos)
+    func unsplashPhotoPickerViewController(_ viewController: UnsplashPhotoPickerViewController,
+                                           didSelectPhotos photos: [Photo]) {
+        photos.forEach(Unsplash.trackDownload)
         photoPickerDelegate?.unsplashPhotoPicker(self, didSelectPhotos: photos)
         dismiss(animated: true, completion: nil)
     }

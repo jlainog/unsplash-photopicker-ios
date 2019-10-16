@@ -15,22 +15,23 @@ extension UnsplashPhotoPickerViewController: UICollectionViewDataSource {
     }
 
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: PhotoCell.reuseIdentifier, for: indexPath)
+        guard let cell = collectionView.dequeueReusableCell(withReuseIdentifier: PhotoCell.reuseIdentifier, for: indexPath) as? PhotoCell else {
+            assertionFailure("Cell must be registered")
+            return .init()
+        }
 
-        guard let photoCell = cell as? PhotoCell, let photo = dataSource.item(at: indexPath.item) else { return cell }
+        if let photo = dataSource.item(at: indexPath.item) {
+            cell.configure(with: photo)
+        }
 
-        photoCell.configure(with: photo)
-
-        return photoCell
+        return cell
     }
 
     func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
         let view = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: PagingView.reuseIdentifier, for: indexPath)
-
         guard let pagingView = view as? PagingView else { return view }
 
         pagingView.isLoading = dataSource.isFetching
-
         return pagingView
     }
 }
@@ -38,8 +39,11 @@ extension UnsplashPhotoPickerViewController: UICollectionViewDataSource {
 // MARK: - UICollectionViewDelegate
 extension UnsplashPhotoPickerViewController: UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
-        let prefetchCount = 19
-        if indexPath.item == dataSource.items.count - prefetchCount {
+        let prefetchRatio: Double = 2 / 3
+        let perPageCount = Double(dataSource.cursor.perPage)
+        let prefetchCount = Int(perPageCount * prefetchRatio)
+        let prefetchItemStartIndex = dataSource.items.count - prefetchCount
+        if indexPath.item == prefetchItemStartIndex {
             fetchNextItems()
         }
     }
@@ -47,7 +51,7 @@ extension UnsplashPhotoPickerViewController: UICollectionViewDelegate {
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         guard let photo = dataSource.item(at: indexPath.item), collectionView.hasActiveDrag == false else { return }
 
-        if Configuration.shared.allowsMultipleSelection {
+        if allowsMultipleSelection {
             updateTitle()
             updateDoneButtonState()
         } else {
@@ -56,7 +60,7 @@ extension UnsplashPhotoPickerViewController: UICollectionViewDelegate {
     }
 
     func collectionView(_ collectionView: UICollectionView, didDeselectItemAt indexPath: IndexPath) {
-        if Configuration.shared.allowsMultipleSelection {
+        if allowsMultipleSelection {
             updateTitle()
             updateDoneButtonState()
         }

@@ -7,45 +7,27 @@
 //
 
 import Foundation
+import unsplash_swift
 
-class SearchPhotosRequest: UnsplashPagedRequest {
+class SearchPhotosRequestOperation: UnsplashPagedRequestOperation {
+    let query: String
 
-    static func cursor(with query: String, page: Int = 1, perPage: Int = 10) -> UnsplashPagedRequest.Cursor {
-        let parameters = ["query": query]
-        return Cursor(page: page, perPage: perPage, parameters: parameters)
+    init(with query: String, page: Int = 1, perPage: Int = 10) {
+        self.query = query
+        super.init(with: page, perPage: perPage)
     }
 
-    convenience init(with query: String, page: Int = 1, perPage: Int = 10) {
-        let cursor = SearchPhotosRequest.cursor(with: query, page: page, perPage: perPage)
-        self.init(with: cursor)
+    init(with query: String, cursor: Unsplash.Cursor) {
+        self.query = query
+        super.init(with: cursor)
     }
 
-    // MARK: - Prepare the request
-
-    override var endpoint: String { return "/search/photos" }
-
-    // MARK: - Process the response
-
-    override func processJSONResponse() {
-        if let photos = photosFromJSONResponse() {
-            self.items = photos
+    override func makeDataTask() -> URLSessionDataTask? {
+        Unsplash.DataTaskFactory.searchPhotos(
+            with: query,
+            cursor: cursor
+        ) {
+            self.completionHandler($0.map({ $0.results }))
         }
-        super.processJSONResponse()
     }
-
-    func photosFromJSONResponse() -> [UnsplashPhoto]? {
-        guard let jsonResponse = jsonResponse as? [String: Any],
-            let results = jsonResponse["results"] as? [Any] else {
-            return nil
-        }
-
-        do {
-            let data = try JSONSerialization.data(withJSONObject: results, options: [])
-            return try JSONDecoder().decode([UnsplashPhoto].self, from: data)
-        } catch {
-            self.error = error
-        }
-        return nil
-    }
-
 }

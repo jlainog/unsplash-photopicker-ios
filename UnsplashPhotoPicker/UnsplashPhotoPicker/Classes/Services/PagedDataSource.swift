@@ -7,15 +7,16 @@
 //
 
 import UIKit
+import unsplash_swift
 
 protocol PagedDataSourceFactory {
-    func initialCursor() -> UnsplashPagedRequest.Cursor
-    func request(with cursor: UnsplashPagedRequest.Cursor) -> UnsplashPagedRequest
+    func initialCursor() -> Unsplash.Cursor
+    func request(with cursor: Unsplash.Cursor) -> UnsplashPagedRequestOperation
 }
 
 protocol PagedDataSourceDelegate: AnyObject {
     func dataSourceWillStartFetching(_ dataSource: PagedDataSource)
-    func dataSource(_ dataSource: PagedDataSource, didFetch items: [UnsplashPhoto])
+    func dataSource(_ dataSource: PagedDataSource, didFetch items: [Photo])
     func dataSource(_ dataSource: PagedDataSource, fetchDidFailWithError error: Error)
 }
 
@@ -30,18 +31,18 @@ class PagedDataSource {
             case .dataSourceIsFetching:
                 return "The data source is already fetching."
             case .wrongItemsType(let returnedItems):
-                return "The request return the wrong item type. Expecting \([UnsplashPhoto].self), got \(returnedItems.self)."
+                return "The request return the wrong item type. Expecting \([Photo].self), got \(returnedItems.self)."
             }
         }
     }
 
-    private(set) var items = [UnsplashPhoto]()
-    private(set) var error: Error?
-    private let factory: PagedDataSourceFactory
-    private var cursor: UnsplashPagedRequest.Cursor
-    private(set) var isFetching = false
     private var canFetchMore = true
+    private let factory: PagedDataSourceFactory
     private lazy var operationQueue = OperationQueue(with: "com.unsplash.pagedDataSource")
+    private(set) var items = [Photo]()
+    private(set) var error: Error?
+    private(set) var cursor: Unsplash.Cursor
+    private(set) var isFetching = false
 
     weak var delegate: PagedDataSourceDelegate?
 
@@ -75,18 +76,26 @@ class PagedDataSource {
         isFetching = true
 
         let request = factory.request(with: cursor)
-        request.completionBlock = {
+        request.completionBlock = completionBlock(with: request)
+        operationQueue.addOperationWithDependencies(request)
+    }
+
+    func completionBlock(with request: UnsplashPagedRequestOperation) -> () -> Void {
+        return { [weak self] in
+            guard let self = self else { return }
+
             if let error = request.error {
                 self.isFetching = false
                 self.fetchDidComplete(withItems: nil, error: error)
                 return
             }
 
-            guard let items = request.items as? [UnsplashPhoto] else {
-                self.isFetching = false
-                self.fetchDidComplete(withItems: nil, error: DataSourceError.wrongItemsType(request.items))
-                return
-            }
+            let items = request.items
+            //            guard let items = request.items else {
+            //                self.isFetching = false
+            //                self.fetchDidComplete(withItems: nil, error: DataSourceError.wrongItemsType(request.items))
+            //                return
+            //            }
 
             if items.count < self.cursor.perPage {
                 self.canFetchMore = false
@@ -99,8 +108,6 @@ class PagedDataSource {
             self.isFetching = false
             self.fetchDidComplete(withItems: items, error: nil)
         }
-
-        operationQueue.addOperationWithDependencies(request)
     }
 
     func cancelFetch() {
@@ -108,7 +115,7 @@ class PagedDataSource {
         isFetching = false
     }
 
-    func item(at index: Int) -> UnsplashPhoto? {
+    func item(at index: Int) -> Photo? {
         guard index < items.count else {
             return nil
         }
@@ -118,7 +125,7 @@ class PagedDataSource {
 
     // MARK: - Private
 
-    private func fetchDidComplete(withItems items: [UnsplashPhoto]?, error: Error?) {
+    private func fetchDidComplete(withItems items: [Photo]?, error: Error?) {
         self.error = error
 
         if let error = error {

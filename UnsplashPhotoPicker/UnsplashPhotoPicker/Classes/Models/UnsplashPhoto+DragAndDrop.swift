@@ -7,8 +7,9 @@
 //
 
 import UIKit
+import unsplash_swift
 
-extension UnsplashPhoto {
+extension Photo {
     var itemProvider: NSItemProvider {
         return NSItemProvider(object: UnsplashPhotoItemProvider(with: self))
     }
@@ -17,9 +18,7 @@ extension UnsplashPhoto {
         let dragItem = UIDragItem(itemProvider: itemProvider)
         dragItem.localObject = self
         dragItem.previewProvider = {
-            guard let photoView = PhotoView.view(with: self) else {
-                return nil
-            }
+            let photoView: PhotoView = .build(with: self)
 
             photoView.userNameLabel.isHidden = true
             photoView.layer.cornerRadius = 12
